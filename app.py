@@ -86,8 +86,12 @@ def logout():
 @app.route('/')
 @login_required
 def index():
-    notes = Note.query.all()  # Mostra tutti gli appunti
-    return render_template('index.html', notes=notes)
+    search_query = request.args.get('search', '')
+    if search_query:
+        notes = Note.query.filter(Note.filename.contains(search_query)).all()
+    else:
+        notes = Note.query.all()
+    return render_template('index.html', notes=notes, search_query=search_query)
 
 # Route per il caricamento dei file (protetta)
 @app.route('/upload', methods=['POST'])

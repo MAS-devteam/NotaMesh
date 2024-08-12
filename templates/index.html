@@ -4,35 +4,44 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Condivisione Appunti</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
 <body>
-    <h1>Condividi i tuoi appunti</h1>
-    
-    <!-- Link per il logout -->
-    <a href="{{ url_for('logout') }}">Logout</a>
-    
-    <!-- Form per caricare un nuovo file -->
-    <form action="/upload" method="post" enctype="multipart/form-data">
-        <input type="file" name="file">
-        <input type="submit" value="Carica">
-    </form>
+    <div class="container">
+        <h1>Condividi i tuoi appunti</h1>
+        
+        <!-- Link per il logout -->
+        <a href="{{ url_for('logout') }}">Logout</a>
 
-    <!-- Lista dei file caricati -->
-    <h2>Appunti disponibili</h2>
-    <ul>
-        {% for note in notes %}
-            <li><a href="{{ url_for('download_file', filename=note.filename) }}">{{ note.filename }}</a></li>
-        {% endfor %}
-    </ul>
+        <!-- Form di ricerca -->
+        <form method="GET" action="{{ url_for('index') }}">
+            <input type="text" name="search" placeholder="Cerca appunti" value="{{ search_query }}">
+            <input type="submit" value="Cerca">
+        </form>
+        
+        <!-- Form per caricare un nuovo file -->
+        <form action="/upload" method="post" enctype="multipart/form-data">
+            <input type="file" name="file">
+            <input type="submit" value="Carica">
+        </form>
 
-    {% with messages = get_flashed_messages() %}
-        {% if messages %}
-            <ul>
-                {% for message in messages %}
-                    <li>{{ message }}</li>
-                {% endfor %}
-            </ul>
-        {% endif %}
-    {% endwith %}
+        <!-- Lista dei file caricati -->
+        <h2>Appunti disponibili</h2>
+        <ul>
+            {% for note in notes %}
+                <li><a href="{{ url_for('download_file', filename=note.filename) }}">{{ note.filename }}</a></li>
+            {% endfor %}
+        </ul>
+
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                <ul>
+                    {% for message in messages %}
+                        <li>{{ message }}</li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
+        {% endwith %}
+    </div>
 </body>
 </html>
