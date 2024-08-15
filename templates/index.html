@@ -12,6 +12,9 @@
         
         <!-- Link per il logout -->
         <a href="{{ url_for('logout') }}">Logout</a>
+        
+        <!-- Link per gestire l'account -->
+        <a href="{{ url_for('account') }}">Gestisci Account</a>
 
         <!-- Form di ricerca -->
         <form method="GET" action="{{ url_for('index') }}">
@@ -21,7 +24,10 @@
         
         <!-- Form per caricare un nuovo file -->
         <form action="/upload" method="post" enctype="multipart/form-data">
-            <input type="file" name="file">
+            <input type="file" name="file" required>
+            <input type="text" name="category" placeholder="Categoria" required>
+            <input type="text" name="tags" placeholder="Tag (separati da virgola)">
+			<input type="text" name="shared_with" placeholder="Condividi con (username separati da virgola)">
             <input type="submit" value="Carica">
         </form>
 
@@ -29,19 +35,36 @@
         <h2>Appunti disponibili</h2>
         <ul>
             {% for note in notes %}
-                <li><a href="{{ url_for('download_file', filename=note.filename) }}">{{ note.filename }}</a></li>
+                <li>
+                    <a href="{{ url_for('download_file', filename=note.filename) }}">{{ note.filename }}</a>
+                    <p>Categoria: {{ note.category }}</p>
+                    <p>Tag: {{ note.tags }}</p>
+
+                    <!-- Commenti e valutazioni -->
+                    <h3>Commenti</h3>
+                    <ul>
+                        {% for comment in note.comments %}
+                            <li>
+                                <strong>{{ comment.user.username }}:</strong> {{ comment.comment_text }} - Valutazione: {{ comment.rating }}
+                            </li>
+                        {% endfor %}
+                    </ul>
+
+                    <form action="{{ url_for('add_comment', note_id=note.id) }}" method="post">
+                        <textarea name="comment_text" placeholder="Aggiungi un commento" required></textarea>
+                        <select name="rating">
+                            <option value="">Valuta</option>
+                            <option value="1">1</option>
+                            <option value="2">2</option>
+                            <option value="3">3</option>
+                            <option value="4">4</option>
+                            <option value="5">5</option>
+                        </select>
+                        <input type="submit" value="Aggiungi Commento">
+                    </form>
+                </li>
             {% endfor %}
         </ul>
-
-        {% with messages = get_flashed_messages() %}
-            {% if messages %}
-                <ul>
-                    {% for message in messages %}
-                        <li>{{ message }}</li>
-                    {% endfor %}
-                </ul>
-            {% endif %}
-        {% endwith %}
     </div>
 </body>
 </html>

@@ -33,6 +33,19 @@ class User(UserMixin, db.Model):
 class Note(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     filename = db.Column(db.String(150), nullable=False)
+    category = db.Column(db.String(50), nullable=True)
+    tags = db.Column(db.String(250), nullable=True)  # Memorizza i tag come stringa separata da virgola
+    shared_with = db.Column(db.String(250), nullable=True)  # Memorizza ID utenti separati da virgola
+
+# Modello per i commenti
+class Comment(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    note_id = db.Column(db.Integer, db.ForeignKey('note.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    comment_text = db.Column(db.Text, nullable=False)
+    rating = db.Column(db.Integer, nullable=True)
+    user = db.relationship('User', backref=db.backref('comments', lazy=True))
+    note = db.relationship('Note', backref=db.backref('comments', lazy=True))
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -87,34 +100,78 @@ def logout():
 @login_required
 def index():
     search_query = request.args.get('search', '')
+    user_id_str = str(current_user.id)
+    
     if search_query:
-        notes = Note.query.filter(Note.filename.contains(search_query)).all()
+        notes = Note.query.filter(
+            (Note.filename.contains(search_query)) |
+            (Note.category.contains(search_query)) |
+            (Note.tags.contains(search_query))
+        ).all()
     else:
-        notes = Note.query.all()
+        notes = Note.query.filter(
+            (Note.shared_with.contains(user_id_str)) |
+            (Note.shared_with.is_(None))  # Opzionale, mostra i file non condivisi
+        ).all()
     return render_template('index.html', notes=notes, search_query=search_query)
 
 # Route per il caricamento dei file (protetta)
 @app.route('/upload', methods=['POST'])
 @login_required
 def upload_file():
-    if 'file' not in request.files:
-        return redirect(request.url)
     file = request.files['file']
-    if file.filename == '':
-        return redirect(request.url)
-    if file:
+    category = request.form['category']
+    tags = request.form['tags']
+    shared_with = request.form['shared_with']  # Usernames separati da virgola
+
+    if file and category:
         filename = file.filename
         file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-        new_note = Note(filename=filename)
+        new_note = Note(filename=filename, category=category, tags=tags, shared_with=shared_with)
         db.session.add(new_note)
         db.session.commit()
+        flash('File caricato con successo!')
+        return redirect(url_for('index'))
+    else:
+        flash('Tutti i campi sono obbligatori.')
         return redirect(url_for('index'))
 
-# Route per scaricare i file (pubblica)
+# Route per aggiungere commenti
+@app.route('/add_comment/<int:note_id>', methods=['POST'])
+@login_required
+def add_comment(note_id):
+    comment_text = request.form['comment_text']
+    rating = request.form.get('rating')
+
+    new_comment = Comment(note_id=note_id, user_id=current_user.id, comment_text=comment_text, rating=rating)
+    db.session.add(new_comment)
+    db.session.commit()
+    flash('Commento aggiunto con successo!')
+    return redirect(url_for('index'))
+
+# Route per scaricare i file (protetta)
 @app.route('/uploads/<filename>')
 @login_required
 def download_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+
+# Route per gestire l'account utente
+@app.route('/account', methods=['GET', 'POST'])
+@login_required
+def account():
+    if request.method == 'POST':
+        new_username = request.form['username']
+        new_password = request.form['password']
+        if new_password:
+            hashed_password = generate_password_hash(new_password, method='pbkdf2:sha256')
+            current_user.password = hashed_password
+        if new_username:
+            current_user.username = new_username
+        db.session.commit()
+        flash('Informazioni aggiornate con successo!')
+        return redirect(url_for('account'))
+    
+    return render_template('account.html', user=current_user)
 
 if __name__ == '__main__':
     app.run(debug=True)
